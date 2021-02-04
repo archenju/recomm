@@ -48,7 +48,7 @@ train, test = random_train_test_split(interactions)
 model = LightFM(learning_rate=0.05, loss='warp')
 model.fit(train, epochs=10, num_threads=2)
 
-
+# Generating the list of artists at start-up:
 artIDs = ap['artistID'].unique()
 numarts = len(ap['artistID'].unique())
 listart = ""
@@ -56,12 +56,12 @@ for it, artName in enumerate(ap['name'].unique()):
     listart = listart + '<input type="checkbox" name="'+str(artIDs[it])+'" value="'+str(artName)+'">'+artName+'<br>'
 
 
+# get_recommendation from Jupyter notebook:
 def get_recommendation(userid, ratings=ratings):
     X = csr_matrix(ratings)
     svd = TruncatedSVD(n_components=1000, n_iter=7, random_state=0)
     X_matrix_svd = svd.fit_transform(X)
     cosine_sim = linear_kernel(X_matrix_svd,X_matrix_svd[userid].reshape(1,-1))
-
     sim_scores = list(enumerate(cosine_sim))
     sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
     sim_scores = sim_scores[1:51]
@@ -74,6 +74,7 @@ def get_recommendation(userid, ratings=ratings):
                 artist_top.append( ap['name'][ap['artistID'] == idx_i].unique()[0] )
     return artist_top
 
+# Default page (page 1):
 @app.route('/')
 def root():
     begin = '''
@@ -90,6 +91,7 @@ def root():
     '''
     return begin+listart+end
 
+# Result page:
 @app.route('/search', methods=['POST', 'GET'])
 def search():
     begin = '''
@@ -99,11 +101,10 @@ def search():
     end = "</body></html>"
     if request.method == 'POST':
         res = ""
-        #recomm = get_recommendation(1)
-        newline = np.zeros(numarts)
+        newline = np.zeros(numarts) # Creating a new user
         for it in request.form:
-            newline[int(it)] = 1
-        ratings2 = np.vstack((ratings, newline))
+            newline[int(it)] = 1 # mean() insteead of '1' would give more accurate results...
+        ratings2 = np.vstack((ratings, newline)) # Adding the new user to the existing users
         recomm = get_recommendation(ratings2.shape[0]-1, ratings2)
         for art in recomm:
             res = res + "<p>"+str(art)+" "+"</p>"
@@ -111,4 +112,4 @@ def search():
         return begin + res + end
       
     else:
-        return begin + end
+        return begin + end # in case user reloads result page.
